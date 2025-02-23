@@ -23,7 +23,7 @@ public class DynamicCollisionBox implements CollisionBox {
 
     // Untested but currently unused
     // *should* work because every single one of these eventually becomes a Complex, Simple, or NoCollision Box
-    @Override
+//    @Override
     public CollisionBox union(SimpleCollisionBox other) {
         CollisionBox dynamicBox = box.fetch(player, version, block, x, y, z).offset(x, y, z);
         return dynamicBox.union(other);

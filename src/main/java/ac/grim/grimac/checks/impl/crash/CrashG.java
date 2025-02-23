@@ -13,7 +13,7 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientUseItem;
 
-@CheckData(name = "CrashG")
+@CheckData(name = "CrashG", description = "Sent negative sequence id")
 public class CrashG extends Check implements PacketCheck {
 
     public CrashG(GrimPlayer player) {

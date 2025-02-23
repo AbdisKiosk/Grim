@@ -5,6 +5,7 @@ import ac.grim.grimac.manager.init.Initable;
 import ac.grim.grimac.manager.init.load.PacketEventsInit;
 import ac.grim.grimac.manager.init.start.*;
 import ac.grim.grimac.manager.init.stop.TerminatePacketEvents;
+import ac.grim.grimac.utils.anticheat.MessageUtil;
 import com.google.common.collect.ImmutableList;
 import lombok.Getter;
 
@@ -40,6 +41,12 @@ public class InitManager {
                 .add(GrimAPI.INSTANCE.getViolationDatabaseManager())
                 .add(new JavaVersion())
                 .add(new ViaVersion())
+                .add(new TAB())
+                .add(() -> {
+                    if (MessageUtil.hasPlaceholderAPI) {
+                        new PlaceholderAPIExpansion().register();
+                    }
+                })
                 .build();
 
         initializersOnStop = ImmutableList.<Initable>builder()

@@ -12,8 +12,8 @@ import java.util.Set;
 public final class EntityTeam {
 
     private final GrimPlayer player;
-    @Getter private final String name;
-    @Getter private final Set<String> entries = new HashSet<>();
+    public final String name;
+    public final Set<String> entries = new HashSet<>();
     @Getter private WrapperPlayServerTeams.CollisionRule collisionRule;
 
     public EntityTeam(GrimPlayer player, String name) {
@@ -24,47 +24,68 @@ public final class EntityTeam {
     public void update(WrapperPlayServerTeams teams) {
         teams.getTeamInfo().ifPresent(info -> this.collisionRule = info.getCollisionRule());
 
+        final TeamHandler teamHandler = player.checkManager.getPacketCheck(TeamHandler.class);
         final WrapperPlayServerTeams.TeamMode mode = teams.getTeamMode();
         if (mode == WrapperPlayServerTeams.TeamMode.ADD_ENTITIES || mode == WrapperPlayServerTeams.TeamMode.CREATE) {
-            final TeamHandler teamHandler = player.checkManager.getPacketCheck(TeamHandler.class);
-            for (String teamsPlayer : teams.getPlayers()) {
-                if (teamsPlayer.equals(player.user.getName())) {
-                    player.teamName = name;
+            label: for (String teamPlayer : teams.getPlayers()) {
+                if (teamPlayer.equals(player.user.getName())) {
+                    teamHandler.setPlayerTeam(this);
                     continue;
                 }
 
-                boolean flag = false;
                 for (UserProfile profile : player.compensatedEntities.profiles.values()) {
-                    if (profile.getName() != null && profile.getName().equals(teamsPlayer)) {
+                    if (profile.getName() != null && profile.getName().equals(teamPlayer)) {
                         teamHandler.addEntityToTeam(profile.getUUID().toString(), this);
-                        flag = true;
+                        continue label;
                     }
                 }
 
-                if (flag) continue;
-
-                teamHandler.addEntityToTeam(teamsPlayer, this);
+                teamHandler.addEntityToTeam(teamPlayer, this);
             }
         } else if (mode == WrapperPlayServerTeams.TeamMode.REMOVE_ENTITIES) {
-            for (String teamsPlayer : teams.getPlayers()) {
-                if (teamsPlayer.equals(player.user.getName())) {
-                    player.teamName = null;
+            label: for (String teamPlayer : teams.getPlayers()) {
+                if (teamPlayer.equals(player.user.getName())) {
+                    // Player was removed from their team.
+                    teamHandler.setPlayerTeam(null);
                     continue;
                 }
-                entries.remove(teamsPlayer);
+
+                for (UserProfile profile : player.compensatedEntities.profiles.values()) {
+                    if (profile.getName() != null && profile.getName().equals(teamPlayer)) {
+                        String uuid = profile.getUUID().toString();
+                        entries.remove(uuid);
+                        teamHandler.removeEntityFromTeam(uuid);
+                        continue label;
+                    }
+                }
+
+                // Entity was removed from their team.
+                teamHandler.removeEntityFromTeam(teamPlayer);
+                entries.remove(teamPlayer);
             }
+        } else if (mode == WrapperPlayServerTeams.TeamMode.REMOVE) {
+
+            EntityTeam playersTeam = teamHandler.getPlayerTeam();
+            // The player's team was deleted, so we must unset the player's team
+            if (playersTeam != null && playersTeam.name.equals(name)) {
+                teamHandler.setPlayerTeam(null);
+            }
+
+            // Also remove the team set on entities
+            for (String entry : entries) {
+                teamHandler.removeEntityFromTeam(entry);
+            }
+            entries.clear();
         }
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof EntityTeam)) return false;
-        return Objects.equals(getName(), ((EntityTeam) o).getName());
+        return this == o || o instanceof EntityTeam t && Objects.equals(name, t.name);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getName());
+        return Objects.hash(name);
     }
 }

@@ -19,8 +19,10 @@ public class BadPacketsQ extends Check implements PacketCheck {
     public void onPacketReceive(PacketReceiveEvent event) {
         if (event.getPacketType() == Client.ENTITY_ACTION) {
             WrapperPlayClientEntityAction wrapper = new WrapperPlayClientEntityAction(event);
-
-            if (wrapper.getJumpBoost() < 0 || wrapper.getJumpBoost() > 100 || wrapper.getEntityId() != player.entityID || (wrapper.getAction() != Action.START_JUMPING_WITH_HORSE && wrapper.getJumpBoost() != 0)) {
+            // you are able to send negative jump boost, how and why!?
+            if (Math.abs(wrapper.getJumpBoost()) > 100
+                    || wrapper.getEntityId() != player.entityID
+                    || wrapper.getAction() != Action.START_JUMPING_WITH_HORSE && wrapper.getJumpBoost() != 0) {
                 if (flagAndAlert("boost=" + wrapper.getJumpBoost() + ", action=" + wrapper.getAction() + ", entity=" + wrapper.getEntityId()) && shouldModifyPackets()) {
                     event.setCancelled(true);
                     player.onPacketCancel();

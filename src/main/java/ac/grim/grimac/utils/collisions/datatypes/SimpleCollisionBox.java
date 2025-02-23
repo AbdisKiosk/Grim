@@ -164,8 +164,7 @@ public class SimpleCollisionBox implements CollisionBox {
         return vectors;
     }
 
-    @Override
-    public CollisionBox union(SimpleCollisionBox other) {
+    public CollisionBox encompass(SimpleCollisionBox other) {
         this.minX = Math.min(this.minX, other.minX);
         this.minY = Math.min(this.minY, other.minY);
         this.minZ = Math.min(this.minZ, other.minZ);
@@ -212,6 +211,11 @@ public class SimpleCollisionBox implements CollisionBox {
         maxZ = Math.max(maxZ, z);
 
         return this;
+    }
+
+    @Override
+    public CollisionBox union(SimpleCollisionBox other) {
+        return new ComplexCollisionBox(2, this, other);
     }
 
     @Override
@@ -389,6 +393,18 @@ public class SimpleCollisionBox implements CollisionBox {
         return hxz - (xwidth + zwidth + bxwidth + bzwidth) / 4;
     }
 
+    public double distanceX(double x) {
+        return x >= this.minX && x <= this.maxX ? 0.0 : Math.min(Math.abs(x - this.minX), Math.abs(x - this.maxX));
+    }
+
+    public double distanceY(double y) {
+        return y >= this.minY && y <= this.maxY ? 0.0 : Math.min(Math.abs(y - this.minY), Math.abs(y - this.maxY));
+    }
+
+    public double distanceZ(double z) {
+        return z >= this.minZ && z <= this.maxZ ? 0.0 : Math.min(Math.abs(z - this.minZ), Math.abs(z - this.maxZ));
+    }
+
     /**
      * Calculates intersection with the given ray between a certain distance
      * interval.
@@ -409,7 +425,7 @@ public class SimpleCollisionBox implements CollisionBox {
     // Copied from hawk lol
     // I would like to point out that this is magic to me and I have not attempted to understand this code
     public Vector intersectsRay(Ray ray, float minDist, float maxDist) {
-        Vector invDir = new Vector(1f / ray.calculateDirection().getX(), 1f / ray.calculateDirection().getY(), 1f / ray.calculateDirection().getZ());
+        Vector invDir = new Vector(1f / ray.getDirection().getX(), 1f / ray.getDirection().getY(), 1f / ray.getDirection().getZ());
 
         boolean signDirX = invDir.getX() < 0;
         boolean signDirY = invDir.getY() < 0;

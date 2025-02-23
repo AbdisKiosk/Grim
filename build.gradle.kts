@@ -3,7 +3,7 @@ import net.minecrell.pluginyml.bukkit.BukkitPluginDescription.Permission
 plugins {
     id("java")
     id("maven-publish")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "9.0.0-beta6"
     id("io.freefair.lombok") version "8.6"
     id("net.minecrell.plugin-yml.bukkit") version "0.6.0"
     id("com.diffplug.spotless") version "6.25.0"
@@ -26,12 +26,8 @@ spotless {
 }
 
 group = "ac.grim.grimac"
-version = "2.3.68"
+version = "2.3.71"
 description = "Libre simulation anticheat designed for 1.21 with 1.8-1.21 support, powered by PacketEvents 2.0."
-
-java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-}
 
 // Set to false for debug builds
 // You cannot live reload classes if the jar relocates dependencies
@@ -41,7 +37,10 @@ val relocate: Boolean = project.findProperty("relocate")?.toString()?.toBoolean(
     ?: true
 
 repositories {
-    mavenLocal()
+    maven {
+        name = "papermc"
+        url = uri("https://repo.papermc.io/repository/maven-public/")
+    }
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") // Spigot
     maven("https://jitpack.io/") { // Grim API
         content {
@@ -56,27 +55,32 @@ repositories {
     maven("https://repo.codemc.io/repository/maven-releases/") // PacketEvents
     maven("https://repo.codemc.io/repository/maven-snapshots/")
     maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/") // placeholderapi
     mavenCentral()
     // FastUtil, Discord-Webhooks
 }
 
 dependencies {
-    implementation("com.github.retrooper:packetevents-spigot:2.7.0-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
+    implementation("com.github.retrooper:packetevents-spigot:2.7.1-SNAPSHOT")
     implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
     implementation("club.minnced:discord-webhooks:0.8.0") // Newer versions include kotlin-stdlib, which leads to incompatibility with plugins that use Kotlin
     implementation("it.unimi.dsi:fastutil:8.5.15")
     implementation("github.scarsz:configuralize:1.4.0")
     implementation("com.zaxxer:HikariCP:4.0.3")
 
-    //implementation("com.github.grimanticheat:grimapi:1193c4fa41")
-    // Used for local testing: implementation("ac.grim.grimac:GRIMAPI:1.0")
-    implementation("com.github.grimanticheat:grimapi:fc5634e444")
+
+    // Used for local testing:
+    //implementation("ac.grim.grimac:GrimAPI:1.0")
+    implementation("com.github.grimanticheat:grimapi:05e31d62f2")
+
+    implementation("net.kyori:adventure-text-minimessage:4.17.0")
+    implementation("net.kyori:adventure-platform-bukkit:4.3.4")
 
     implementation("org.jetbrains:annotations:24.1.0")
     compileOnly("org.geysermc.floodgate:api:2.0-SNAPSHOT")
-    compileOnly("org.spigotmc:spigot-api:1.18.2-R0.1-SNAPSHOT")
     compileOnly("com.viaversion:viaversion-api:5.0.4-SNAPSHOT")
-    //
+    compileOnly("me.clip:placeholderapi:2.11.6")
     compileOnly("io.netty:netty-all:4.1.85.Final")
 }
 
@@ -97,7 +101,8 @@ bukkit {
         "ViaRewind",
         "Geyser-Spigot",
         "floodgate",
-        "FastLogin"
+        "FastLogin",
+        "PlaceholderAPI",
     )
 
     permissions {
@@ -123,6 +128,11 @@ bukkit {
 
         register("grim.brand") {
             description = "Show client brands on join"
+            default = Permission.Default.OP
+        }
+
+        register("grim.brand.enable-on-join") {
+            description = "Enable showing client brands on join"
             default = Permission.Default.OP
         }
 
@@ -165,6 +175,12 @@ tasks.build {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
+    options.release.set(17)
+}
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+    disableAutoTargetJvm()
 }
 
 publishing.publications.create<MavenPublication>("maven") {
@@ -172,6 +188,10 @@ publishing.publications.create<MavenPublication>("maven") {
 }
 
 tasks.shadowJar {
+    manifest {
+        attributes["paperweight-mappings-namespace"] = "mojang"
+    }
+
     minimize()
     archiveFileName.set("${project.name}-${project.version}.jar")
     if (relocate) {

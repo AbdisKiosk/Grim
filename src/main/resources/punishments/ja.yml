@@ -6,7 +6,7 @@
 # [alert] - アラート通知を行う特別なコマンド
 # [webhook] - DiscordのWebhookに通知する特別なコマンド
 # [proxy] - プロキシに接続された他のサーバーに通知する特別なコマンド（BungeeCord/Velocity用）
-処罰:
+Punishments:
   Simulation:
     # 何秒後に違反をリセットしますか？
     remove-violations-after: 300
@@ -68,12 +68,15 @@
   Misc:
     remove-violations-after: 300
     checks:
-      - "EntityControl"
+      - "Vehicle"
       - "NoSlow"
+      - "Sprint"
+      - "MultiActions"
       - "Place"
       - "Baritone"
-      - "FastBreak"
+      - "Break"
       - "TransactionOrder"
+      - "Elytra"
     commands:
       - "10:5 [alert]"
       - "20:10 [webhook]"

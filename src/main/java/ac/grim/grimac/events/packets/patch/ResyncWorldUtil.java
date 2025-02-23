@@ -9,9 +9,12 @@ import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.netty.channel.ChannelHelper;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.util.Vector3i;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerAcknowledgeBlockChanges;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerMultiBlockChange;
 import io.github.retrooper.packetevents.util.folia.FoliaScheduler;
 import org.bukkit.Chunk;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
@@ -22,11 +25,11 @@ public class ResyncWorldUtil {
     static HashMap<BlockData, Integer> blockDataToId = new HashMap<>();
 
     public static void resyncPosition(GrimPlayer player, Vector3i pos) {
-        resyncPositions(player, pos.getX(), pos.getY(), pos.getZ(), pos.getX(), pos.getY(), pos.getZ());
+        player.getResyncHandler().resync(pos.getX(), pos.getY(), pos.getZ(), pos.getX(), pos.getY(), pos.getZ());
     }
 
     public static void resyncPositions(GrimPlayer player, SimpleCollisionBox box) {
-        resyncPositions(player, GrimMath.floor(box.minX), GrimMath.floor(box.minY), GrimMath.floor(box.minZ),
+        player.getResyncHandler().resync(GrimMath.floor(box.minX), GrimMath.floor(box.minY), GrimMath.floor(box.minZ),
                 GrimMath.ceil(box.maxX), GrimMath.ceil(box.maxY), GrimMath.ceil(box.maxZ));
     }
 
@@ -113,6 +116,37 @@ public class ResyncWorldUtil {
                         ChannelHelper.runInEventLoop(player.user.getChannel(), () -> player.user.sendPacket(packet));
                     }
                 }
+            }
+        });
+    }
+
+    public static void resyncPosition(GrimPlayer player, Vector3i pos, int sequence) {
+        if (player.bukkitPlayer == null) return;
+
+        final int chunkX = pos.x >> 4;
+        final int chunkZ = pos.z >> 4;
+        final World world = player.bukkitPlayer.getWorld();
+
+        FoliaScheduler.getRegionScheduler().execute(GrimAPI.INSTANCE.getPlugin(), world, chunkX, chunkZ, () -> {
+            if (!player.bukkitPlayer.isOnline() || !player.getSetbackTeleportUtil().hasAcceptedSpawnTeleport) return;
+
+            if (!player.compensatedWorld.isChunkLoaded(chunkX, chunkZ)) return;
+            if (player.bukkitPlayer.getLocation().distance(new Location(world, pos.x, pos.y, pos.z)) >= 64) return;
+            if (!world.isChunkLoaded(chunkX, chunkZ)) return; // Don't load chunks sync
+
+            final Block block = world.getChunkAt(chunkX, chunkZ).getBlock(pos.x & 15, pos.y, pos.z & 15);
+
+            final int blockId;
+            if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_13)) {
+                // Cache this because strings are expensive
+                blockId = blockDataToId.computeIfAbsent(block.getBlockData(), data -> WrappedBlockState.getByString(PacketEvents.getAPI().getServerManager().getVersion().toClientVersion(), data.getAsString(false)).getGlobalId());
+            } else {
+                blockId = (block.getType().getId() << 4) | block.getData();
+            }
+
+            player.user.sendPacket(new WrapperPlayServerBlockChange(pos, blockId));
+            if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_19)) { // Via will handle this for us pre-1.19
+                player.user.sendPacket(new WrapperPlayServerAcknowledgeBlockChanges(sequence)); // Make 1.19 clients apply the changes
             }
         });
     }

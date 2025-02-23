@@ -22,6 +22,7 @@ import org.bukkit.plugin.ServicePriority;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -43,8 +44,10 @@ public class GrimExternalAPI implements GrimAbstractAPI, ConfigReloadObserver, I
     }
 
     @Override
-    public void setServerName(String name) {
-        variableReplacements.put("%server%", user -> name);
+    public @Nullable GrimUser getGrimUser(UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return null;
+        return getGrimUser(player);
     }
 
     @Getter
@@ -53,8 +56,7 @@ public class GrimExternalAPI implements GrimAbstractAPI, ConfigReloadObserver, I
     @Getter
     private final Map<String, String> staticReplacements = new ConcurrentHashMap<>();
 
-    public String replaceVariables(GrimUser user, String content, boolean colors) {
-        if (colors) content = ChatColor.translateAlternateColorCodes('&', content);
+    public String replaceVariables(GrimUser user, String content) {
         for (Map.Entry<String, String> entry : staticReplacements.entrySet()) {
             content = content.replace(entry.getKey(), entry.getValue());
         }
@@ -112,6 +114,16 @@ public class GrimExternalAPI implements GrimAbstractAPI, ConfigReloadObserver, I
     @Override
     public ConfigManager getConfigManager() {
         return configManager;
+    }
+
+    @Override
+    public boolean hasStarted() {
+        return started;
+    }
+
+    @Override
+    public int getCurrentTick() {
+        return GrimAPI.INSTANCE.getTickManager().currentTick;
     }
 
     private ConfigManager configManager = null;
@@ -208,7 +220,7 @@ public class GrimExternalAPI implements GrimAbstractAPI, ConfigReloadObserver, I
         variableReplacements.putIfAbsent("%tps%", user -> String.format("%.2f", SpigotReflectionUtil.getTPS()));
         variableReplacements.putIfAbsent("%version%", GrimUser::getVersionName);
         // static variables
-        staticReplacements.putIfAbsent("%prefix%", ChatColor.translateAlternateColorCodes('&', GrimAPI.INSTANCE.getConfigManager().getPrefix()));
+        staticReplacements.put("%prefix%", ChatColor.translateAlternateColorCodes('&', GrimAPI.INSTANCE.getConfigManager().getPrefix()));
         staticReplacements.putIfAbsent("%grim_version%", getGrimVersion());
     }
 

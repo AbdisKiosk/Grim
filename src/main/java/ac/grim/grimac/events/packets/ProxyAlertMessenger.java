@@ -2,6 +2,7 @@ package ac.grim.grimac.events.packets;
 
 import ac.grim.grimac.GrimAPI;
 import ac.grim.grimac.utils.anticheat.LogUtil;
+import ac.grim.grimac.utils.anticheat.MessageUtil;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
@@ -59,7 +60,7 @@ public class ProxyAlertMessenger extends PacketListenerAbstract {
         }
 
         for (Player bukkitPlayer : GrimAPI.INSTANCE.getAlertManager().getEnabledAlerts())
-            bukkitPlayer.sendMessage(alert);
+            MessageUtil.sendMessage(bukkitPlayer, MessageUtil.miniMessage(alert));
     }
 
     public static void sendPluginMessage(String message) {
@@ -87,11 +88,11 @@ public class ProxyAlertMessenger extends PacketListenerAbstract {
     }
 
     public static boolean canSendAlerts() {
-        return usingProxy && GrimAPI.INSTANCE.getConfigManager().getConfig().getBooleanElse("alerts.proxy.send", false) && Bukkit.getOnlinePlayers().size() > 0;
+        return usingProxy && GrimAPI.INSTANCE.getConfigManager().getConfig().getBooleanElse("alerts.proxy.send", false) && !Bukkit.getOnlinePlayers().isEmpty();
     }
 
     public static boolean canReceiveAlerts() {
-        return usingProxy && GrimAPI.INSTANCE.getConfigManager().getConfig().getBooleanElse("alerts.proxy.receive", false) && GrimAPI.INSTANCE.getAlertManager().getEnabledAlerts().size() > 0;
+        return usingProxy && GrimAPI.INSTANCE.getConfigManager().getConfig().getBooleanElse("alerts.proxy.receive", false) && !GrimAPI.INSTANCE.getAlertManager().getEnabledAlerts().isEmpty();
     }
 
     private static boolean getBooleanFromFile(String pathToFile, String pathToValue) {

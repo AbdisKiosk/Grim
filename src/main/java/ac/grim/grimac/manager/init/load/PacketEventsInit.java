@@ -21,7 +21,6 @@ public class PacketEventsInit implements Initable {
         LogUtil.info("Loading PacketEvents...");
         PacketEvents.setAPI(SpigotPacketEventsBuilder.build(GrimAPI.INSTANCE.getPlugin()));
         PacketEvents.getAPI().getSettings()
-                .bStats(true)
                 .fullStackTrace(true)
                 .kickOnPacketException(true)
                 .checkForUpdates(false)

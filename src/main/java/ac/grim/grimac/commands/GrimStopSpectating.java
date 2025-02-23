@@ -22,15 +22,15 @@ public class GrimStopSpectating extends BaseCommand {
     @CommandPermission("grim.spectate")
     @CommandCompletion("@stopspectating")
     public void onStopSpectate(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) return;
         String string = args.length > 0 ? args[0] : null;
-        if (!(sender instanceof Player)) return;
-        Player player = (Player) sender;
         if (GrimAPI.INSTANCE.getSpectateManager().isSpectating(player.getUniqueId())) {
             boolean teleportBack = string == null || !string.equalsIgnoreCase("here") || !sender.hasPermission("grim.spectate.stophere");
             GrimAPI.INSTANCE.getSpectateManager().disable(player, teleportBack);
         } else {
             String message = GrimAPI.INSTANCE.getConfigManager().getConfig().getStringElse("cannot-spectate-return", "%prefix% &cYou can only do this after spectating a player.");
-            sender.sendMessage(MessageUtil.format(message));
+            message = MessageUtil.replacePlaceholders(sender, message);
+            MessageUtil.sendMessage(sender, MessageUtil.miniMessage(message));
         }
     }
 }

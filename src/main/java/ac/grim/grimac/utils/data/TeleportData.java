@@ -21,14 +21,14 @@ public class TeleportData {
     }
 
     public boolean isRelativeX() {
-        return flags.isSet(RelativeFlag.X.getMask());
+        return flags.has(RelativeFlag.X.getMask());
     }
 
     public boolean isRelativeY() {
-        return flags.isSet(RelativeFlag.Y.getMask());
+        return flags.has(RelativeFlag.Y.getMask());
     }
 
     public boolean isRelativeZ() {
-        return flags.isSet(RelativeFlag.Z.getMask());
+        return flags.has(RelativeFlag.Z.getMask());
     }
 }

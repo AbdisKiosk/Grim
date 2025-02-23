@@ -3,7 +3,11 @@ package ac.grim.grimac.manager;
 import ac.grim.grimac.GrimAPI;
 import ac.grim.grimac.manager.init.Initable;
 import ac.grim.grimac.player.GrimPlayer;
+import ac.grim.grimac.utils.anticheat.MessageUtil;
+import ac.grim.grimac.utils.reflection.PaperUtils;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfo;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -36,9 +40,9 @@ public class SpectateManager implements Initable {
     }
 
     public boolean shouldHidePlayer(GrimPlayer receiver, UUID uuid) {
-        return !Objects.equals(uuid, receiver.playerUUID) // don't hide to yourself
+        return !Objects.equals(uuid, receiver.uuid) // don't hide to yourself
                 && (spectatingPlayers.containsKey(uuid) || hiddenPlayers.contains(uuid)) //hide if you are a spectator
-                && !(receiver.playerUUID != null && (spectatingPlayers.containsKey(receiver.playerUUID) || hiddenPlayers.contains(receiver.playerUUID))) // don't hide to other spectators
+                && !(receiver.uuid != null && (spectatingPlayers.containsKey(receiver.uuid) || hiddenPlayers.contains(receiver.uuid))) // don't hide to other spectators
                 && (!checkWorld || (receiver.bukkitPlayer != null && allowedWorlds.contains(receiver.bukkitPlayer.getWorld().getName()))); // hide if you are in a specific world
     }
 
@@ -57,13 +61,26 @@ public class SpectateManager implements Initable {
         handlePlayerStopSpectating(player.getUniqueId());
     }
 
-    //only call this synchronously
+    // only call this synchronously
     public void disable(Player player, boolean teleportBack) {
         PreviousState previousState = spectatingPlayers.get(player.getUniqueId());
         if (previousState != null) {
-            if (teleportBack) player.teleport(previousState.location);
-            player.setGameMode(previousState.gameMode);
+            if (teleportBack && previousState.location.isWorldLoaded()) {
+                PaperUtils.teleportAsync(player, previousState.location).thenAccept(bool -> {
+                    if (bool) {
+                        onDisable(previousState, player);
+                    } else {
+                        MessageUtil.sendMessage(player, Component.text("Teleport failed, please try again.", NamedTextColor.RED));
+                    }
+                });
+            } else {
+                onDisable(previousState, player);
+            }
         }
+    }
+
+    private void onDisable(PreviousState previousState, Player player) {
+        player.setGameMode(previousState.gameMode);
         handlePlayerStopSpectating(player.getUniqueId());
     }
 
@@ -71,8 +88,5 @@ public class SpectateManager implements Initable {
         spectatingPlayers.remove(uuid);
     }
 
-    private record PreviousState(org.bukkit.GameMode gameMode, Location location) {
-
-    }
-
+    private record PreviousState(org.bukkit.GameMode gameMode, Location location) {}
 }

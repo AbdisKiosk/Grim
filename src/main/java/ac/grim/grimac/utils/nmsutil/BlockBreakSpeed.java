@@ -1,6 +1,7 @@
 package ac.grim.grimac.utils.nmsutil;
 
 import ac.grim.grimac.player.GrimPlayer;
+import ac.grim.grimac.utils.data.tags.SyncedTags;
 import ac.grim.grimac.utils.enums.FluidTag;
 import ac.grim.grimac.utils.inventory.EnchantmentHelper;
 import com.github.retrooper.packetevents.PacketEvents;
@@ -8,11 +9,11 @@ import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.attribute.Attributes;
 import com.github.retrooper.packetevents.protocol.item.ItemStack;
 import com.github.retrooper.packetevents.protocol.item.enchantment.type.EnchantmentTypes;
+import com.github.retrooper.packetevents.protocol.item.type.ItemType;
 import com.github.retrooper.packetevents.protocol.item.type.ItemTypes;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.player.GameMode;
 import com.github.retrooper.packetevents.protocol.potion.PotionTypes;
-import com.github.retrooper.packetevents.protocol.world.MaterialType;
 import com.github.retrooper.packetevents.protocol.world.states.WrappedBlockState;
 import com.github.retrooper.packetevents.protocol.world.states.defaulttags.BlockTags;
 import com.github.retrooper.packetevents.protocol.world.states.type.StateTypes;
@@ -25,8 +26,9 @@ public class BlockBreakSpeed {
         // GET destroy speed
         // Starts with itemstack get destroy speed
         ItemStack tool = player.getInventory().getHeldItem();
+        ItemType toolType = tool.getType();
 
-        WrappedBlockState block = player.compensatedWorld.getWrappedBlockStateAt(position);
+        WrappedBlockState block = player.compensatedWorld.getBlock(position);
         float blockHardness = block.getType().getHardness();
 
         // 1.15.2 and below need this hack
@@ -35,8 +37,10 @@ public class BlockBreakSpeed {
         }
 
         if (player.gamemode == GameMode.CREATIVE) {
-            // A creative mode player cannot break things with a sword!
-            if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.SWORD)) {
+            // players in creative mode cannot mine with certain items
+            if (toolType.hasAttribute(ItemTypes.ItemAttribute.SWORD) || toolType == ItemTypes.TRIDENT
+                    || toolType == ItemTypes.DEBUG_STICK && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_13)
+                    || toolType == ItemTypes.MACE && player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_20_5)) {
                 return 0;
             }
             // Instabreak
@@ -49,47 +53,47 @@ public class BlockBreakSpeed {
         float speedMultiplier = 1.0F;
 
         // 1.13 and below need their own huge methods to support this...
-        if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.AXE)) {
-            isCorrectToolForDrop = BlockTags.MINEABLE_AXE.contains(block.getType());
-        } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.PICKAXE)) {
-            isCorrectToolForDrop = BlockTags.MINEABLE_PICKAXE.contains(block.getType());
-        } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.SHOVEL)) {
-            isCorrectToolForDrop = BlockTags.MINEABLE_SHOVEL.contains(block.getType());
-        } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.HOE)) {
-            isCorrectToolForDrop = BlockTags.MINEABLE_HOE.contains(block.getType());
+        if (toolType.hasAttribute(ItemTypes.ItemAttribute.AXE)) {
+            isCorrectToolForDrop = player.tagManager.block(SyncedTags.MINEABLE_AXE).contains(block.getType());
+        } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.PICKAXE)) {
+            isCorrectToolForDrop = player.tagManager.block(SyncedTags.MINEABLE_PICKAXE).contains(block.getType());
+        } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.SHOVEL)) {
+            isCorrectToolForDrop = player.tagManager.block(SyncedTags.MINEABLE_SHOVEL).contains(block.getType());
+        } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.HOE)) {
+            isCorrectToolForDrop = player.tagManager.block(SyncedTags.MINEABLE_HOE).contains(block.getType());
         }
 
         if (isCorrectToolForDrop) {
             int tier = 0;
-            if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.WOOD_TIER)) { // Tier 0
+            if (toolType.hasAttribute(ItemTypes.ItemAttribute.WOOD_TIER)) { // Tier 0
                 speedMultiplier = 2.0f;
-            } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.STONE_TIER)) { // Tier 1
+            } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.STONE_TIER)) { // Tier 1
                 speedMultiplier = 4.0f;
                 tier = 1;
-            } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.IRON_TIER)) { // Tier 2
+            } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.IRON_TIER)) { // Tier 2
                 speedMultiplier = 6.0f;
                 tier = 2;
-            } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.DIAMOND_TIER)) { // Tier 3
+            } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.DIAMOND_TIER)) { // Tier 3
                 speedMultiplier = 8.0f;
                 tier = 3;
-            } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.GOLD_TIER)) { // Tier 0
+            } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.GOLD_TIER)) { // Tier 0
                 speedMultiplier = 12.0f;
-            } else if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.NETHERITE_TIER)) { // Tier 4
+            } else if (toolType.hasAttribute(ItemTypes.ItemAttribute.NETHERITE_TIER)) { // Tier 4
                 speedMultiplier = 9.0f;
                 tier = 4;
             }
 
-            if (tier < 3 && BlockTags.NEEDS_DIAMOND_TOOL.contains(block.getType())) {
+            if (tier < 3 && player.tagManager.block(SyncedTags.NEEDS_DIAMOND_TOOL).contains(block.getType())) {
                 isCorrectToolForDrop = false;
-            } else if (tier < 2 && BlockTags.NEEDS_IRON_TOOL.contains(block.getType())) {
+            } else if (tier < 2 && player.tagManager.block(SyncedTags.NEEDS_IRON_TOOL).contains(block.getType())) {
                 isCorrectToolForDrop = false;
-            } else if (tier < 1 && BlockTags.NEEDS_STONE_TOOL.contains(block.getType())) {
+            } else if (tier < 1 && player.tagManager.block(SyncedTags.NEEDS_STONE_TOOL).contains(block.getType())) {
                 isCorrectToolForDrop = false;
             }
         }
 
         // Shears can mine some blocks faster
-        if (tool.getType() == ItemTypes.SHEARS) {
+        if (toolType == ItemTypes.SHEARS) {
             isCorrectToolForDrop = true;
 
             if (block.getType() == StateTypes.COBWEB || Materials.isLeaves(block.getType())) {
@@ -107,14 +111,10 @@ public class BlockBreakSpeed {
         }
 
         // Swords can also mine some blocks faster
-        if (tool.getType().hasAttribute(ItemTypes.ItemAttribute.SWORD)) {
+        if (toolType.hasAttribute(ItemTypes.ItemAttribute.SWORD)) {
             if (block.getType() == StateTypes.COBWEB) {
                 speedMultiplier = 15.0f;
-            } else if (block.getType().getMaterialType() == MaterialType.PLANT
-                    || BlockTags.LEAVES.contains(block.getType())
-                    || block.getType() == StateTypes.VINE
-                    || block.getType() == StateTypes.PUMPKIN
-                    || block.getType() == StateTypes.MELON) {
+            } else if (player.tagManager.block(SyncedTags.SWORD_EFFICIENT).contains(block.getType())) {
                 speedMultiplier = 1.5f;
             }
 
@@ -123,7 +123,7 @@ public class BlockBreakSpeed {
 
         if (speedMultiplier > 1.0f) {
             if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21) && PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_21)) {
-                speedMultiplier += (float) player.compensatedEntities.getSelf().getAttributeValue(Attributes.PLAYER_MINING_EFFICIENCY);
+                speedMultiplier += (float) player.compensatedEntities.self.getAttributeValue(Attributes.MINING_EFFICIENCY);
             } else {
                 int digSpeed = tool.getEnchantmentLevel(EnchantmentTypes.BLOCK_EFFICIENCY, PacketEvents.getAPI().getServerManager().getVersion().toClientVersion());
                 if (digSpeed > 0) {
@@ -136,7 +136,7 @@ public class BlockBreakSpeed {
         OptionalInt conduit = player.compensatedEntities.getPotionLevelForPlayer(PotionTypes.CONDUIT_POWER);
 
         if (digSpeed.isPresent() || conduit.isPresent()) {
-            int hasteLevel = Math.max(digSpeed.isEmpty() ? 0 : digSpeed.getAsInt(), !conduit.isPresent() ? 0 : conduit.getAsInt());
+            int hasteLevel = Math.max(digSpeed.isEmpty() ? 0 : digSpeed.getAsInt(), conduit.isEmpty() ? 0 : conduit.getAsInt());
             speedMultiplier *= (float) (1 + (0.2 * (hasteLevel + 1)));
         }
 
@@ -158,11 +158,11 @@ public class BlockBreakSpeed {
             }
         }
 
-        speedMultiplier *= (float) player.compensatedEntities.getSelf().getAttributeValue(Attributes.PLAYER_BLOCK_BREAK_SPEED);
+        speedMultiplier *= (float) player.compensatedEntities.self.getAttributeValue(Attributes.BLOCK_BREAK_SPEED);
 
         if (player.fluidOnEyes == FluidTag.WATER) {
             if (player.getClientVersion().isNewerThanOrEquals(ClientVersion.V_1_21) && PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_21)) {
-                speedMultiplier *= (float) player.compensatedEntities.getSelf().getAttributeValue(Attributes.PLAYER_SUBMERGED_MINING_SPEED);
+                speedMultiplier *= (float) player.compensatedEntities.self.getAttributeValue(Attributes.SUBMERGED_MINING_SPEED);
             } else {
                 if (EnchantmentHelper.getMaximumEnchantLevel(player.getInventory(), EnchantmentTypes.AQUA_AFFINITY, PacketEvents.getAPI().getServerManager().getVersion().toClientVersion()) == 0) {
                     speedMultiplier /= 5;

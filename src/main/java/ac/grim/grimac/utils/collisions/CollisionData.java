@@ -62,7 +62,7 @@ public enum CollisionData {
     }, StateTypes.VINE, StateTypes.FIRE),
 
     LAVA((player, version, block, x, y, z) -> {
-        if (MovementTickerStrider.isAbove(player) && player.compensatedEntities.getSelf().getRiding() instanceof PacketEntityStrider) {
+        if (MovementTickerStrider.isAbove(player) && player.compensatedEntities.self.getRiding() instanceof PacketEntityStrider) {
             if (block.getLevel() == 0) {
                 return new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
             }
@@ -543,19 +543,17 @@ public enum CollisionData {
     FENCE(new DynamicCollisionFence(), BlockTags.FENCES.getStates().toArray(new StateType[0])),
 
     SNOW((player, version, data, x, y, z) -> {
-        if (data.getLayers() == 1 && version.isNewerThanOrEquals(ClientVersion.V_1_13)) {
-            // Via doesn't touch this
-            if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_13)) {
+        int layers = data.getLayers();
+        if (layers == 1 && version.isNewerThanOrEquals(ClientVersion.V_1_13)) {
+            if (PacketEvents.getAPI().getServerManager().getVersion().isNewerThanOrEquals(ServerVersion.V_1_13)
+                    || !ViaVersionUtil.isAvailable() || !Via.getConfig().isSnowCollisionFix()) {
                 return NoCollisionBox.INSTANCE;
             }
-            // Handle viaversion mapping
-            if (ViaVersionUtil.isAvailable() && Via.getConfig().isSnowCollisionFix()) {
-                data = data.clone();
-                data.setLayers(2);
-            }
+
+            layers++;
         }
 
-        return new SimpleCollisionBox(0, 0, 0, 1, (data.getLayers() - 1) * 0.125, 1);
+        return new SimpleCollisionBox(0, 0, 0, 1, (layers - 1) * 0.125, 1);
     }, StateTypes.SNOW),
 
     STAIR(new DynamicStair(), BlockTags.STAIRS.getStates().toArray(new StateType[0])),
@@ -591,12 +589,19 @@ public enum CollisionData {
         return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.0625F, 1.0F, false);
     }, BlockTags.WOOL_CARPETS.getStates().toArray(new StateType[0])),
 
-    MOSS_CARPET((player, version, data, x, y, z) -> {
-        if (version.isOlderThanOrEquals(ClientVersion.V_1_7_10))
-            return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, false);
+    MOSS_CARPET(CARPET.dynamic, StateTypes.MOSS_CARPET),
+
+    PALE_MOSS_CARPET((player, version, data, x, y, z) -> {
+        if (!data.isBottom()) {
+            return NoCollisionBox.INSTANCE;
+        }
+
+        if (version.isOlderThan(ClientVersion.V_1_21_2)) {
+            return MOSS_CARPET.dynamic.fetch(player, version, data, x, y, z);
+        }
 
         return new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.0625F, 1.0F, false);
-    }, StateTypes.MOSS_CARPET),
+    }, StateTypes.PALE_MOSS_CARPET),
 
     DAYLIGHT(new SimpleCollisionBox(0.0F, 0.0F, 0.0F, 1.0F, 0.375, 1.0F, false),
             StateTypes.DAYLIGHT_DETECTOR),
@@ -628,7 +633,7 @@ public enum CollisionData {
 
     LILYPAD((player, version, data, x, y, z) -> {
         // Boats break lilypads client sided on 1.12- clients.
-        if (player.compensatedEntities.getSelf().getRiding() != null && player.compensatedEntities.getSelf().getRiding().isBoat() && version.isOlderThanOrEquals(ClientVersion.V_1_12_2))
+        if (player.inVehicle() && player.compensatedEntities.self.getRiding().isBoat() && version.isOlderThanOrEquals(ClientVersion.V_1_12_2))
             return NoCollisionBox.INSTANCE;
 
         if (version.isOlderThan(ClientVersion.V_1_9))
@@ -922,7 +927,7 @@ public enum CollisionData {
         }
 
         ItemStack boots = player.getInventory().getBoots();
-        if (player.lastY > y + 1 - 1e-5 && boots != null && boots.getType() == ItemTypes.LEATHER_BOOTS && !player.isSneaking && !player.compensatedEntities.getSelf().inVehicle())
+        if (player.lastY > y + 1 - 1e-5 && boots != null && boots.getType() == ItemTypes.LEATHER_BOOTS && !player.isSneaking && !player.inVehicle())
             return new SimpleCollisionBox(0, 0, 0, 1, 1, 1, true);
 
         return NoCollisionBox.INSTANCE;
@@ -1139,7 +1144,7 @@ public enum CollisionData {
     // Would pre-computing all states be worth the memory cost? I doubt it
     public static CollisionData getData(StateType state) { // TODO: Find a better hack for lava and scaffolding
         // What the fuck mojang, why put noCollision() and then give PITCHER_CROP collision?
-        return state.isSolid() || state == StateTypes.LAVA || state == StateTypes.SCAFFOLDING || state == StateTypes.PITCHER_CROP || state == StateTypes.HEAVY_CORE || BlockTags.WALL_HANGING_SIGNS.contains(state) ? rawLookupMap.getOrDefault(state, DEFAULT) : NO_COLLISION;
+        return state.isSolid() || state == StateTypes.LAVA || state == StateTypes.SCAFFOLDING || state == StateTypes.PITCHER_CROP || state == StateTypes.HEAVY_CORE || state == StateTypes.PALE_MOSS_CARPET || BlockTags.WALL_HANGING_SIGNS.contains(state) ? rawLookupMap.getOrDefault(state, DEFAULT) : NO_COLLISION;
     }
 
     // TODO: This is wrong if a block doesn't have any hitbox and isn't specified, light block?

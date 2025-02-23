@@ -212,6 +212,6 @@ tasks.shadowJar {
         relocate("org.json", "ac.grim.grimac.shaded.json")
         relocate("org.intellij", "ac.grim.grimac.shaded.intellij")
         relocate("org.jetbrains", "ac.grim.grimac.shaded.jetbrains")
-        relocate("com.zaxxer", "ac.grim.rgimac.shaded.zaxxer")
+        relocate("com.zaxxer", "ac.grim.grimac.shaded.zaxxer")
     }
 }

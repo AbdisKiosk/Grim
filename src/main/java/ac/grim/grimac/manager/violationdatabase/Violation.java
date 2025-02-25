@@ -21,7 +21,7 @@ public class Violation {
 
     public static List<Violation> fromResultSet(ResultSet resultSet) throws SQLException {
         List<Violation> violations = new ArrayList<>();
-        while(resultSet.next()) {
+        while (resultSet.next()) {
             String server = resultSet.getString("server");
             UUID player = UUID.fromString(resultSet.getString("uuid"));
             String checkName = resultSet.getString("check_name");

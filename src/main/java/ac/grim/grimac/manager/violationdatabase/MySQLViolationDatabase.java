@@ -58,7 +58,7 @@ public class MySQLViolationDatabase implements ViolationDatabase {
     }
 
     @Override
-    public synchronized void logAlert(GrimPlayer player, String verbose, String checkName, int vls) {
+    public synchronized void logAlert(GrimPlayer player, String verbose, String checkName, int vl) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement insertAlert = connection.prepareStatement(
                      "INSERT INTO violations (server, uuid, check_name, verbose, vl, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -68,7 +68,7 @@ public class MySQLViolationDatabase implements ViolationDatabase {
             insertAlert.setString(2, player.getUniqueId().toString());
             insertAlert.setString(3, checkName);
             insertAlert.setString(4, verbose);
-            insertAlert.setInt(5, vls);
+            insertAlert.setInt(5, vl);
             insertAlert.setLong(6, System.currentTimeMillis());
             insertAlert.execute();
         } catch (SQLException ex) {
@@ -77,13 +77,13 @@ public class MySQLViolationDatabase implements ViolationDatabase {
     }
 
     @Override
-    public synchronized int getLogCount(UUID player) {
+    public synchronized int getLogCount(UUID uuid) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement countLogs = connection.prepareStatement(
                      "SELECT COUNT(*) FROM violations WHERE uuid = ?"
              )
         ) {
-            countLogs.setString(1, player.toString());
+            countLogs.setString(1, uuid.toString());
             ResultSet result = countLogs.executeQuery();
             if (result.next()) {
                 return result.getInt(1);
@@ -95,14 +95,14 @@ public class MySQLViolationDatabase implements ViolationDatabase {
     }
 
     @Override
-    public synchronized List<Violation> getViolations(UUID player, int page, int limit) {
+    public synchronized List<Violation> getViolations(UUID uuid, int page, int limit) {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement fetchLogs = connection.prepareStatement(
                      "SELECT server, uuid, check_name, verbose, vl, created_at FROM violations" +
                              " WHERE uuid = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
              )
         ) {
-            fetchLogs.setString(1, player.toString());
+            fetchLogs.setString(1, uuid.toString());
             fetchLogs.setInt(2, limit);
             fetchLogs.setInt(3, (page - 1) * limit);
             return Violation.fromResultSet(fetchLogs.executeQuery());
